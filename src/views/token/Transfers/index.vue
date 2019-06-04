@@ -1,35 +1,73 @@
 <template>
-  <div
-    class="demo-infinite-container"
-    v-infinite-scroll="handleInfiniteOnLoad"
-    :infinite-scroll-disabled="busy"
-    :infinite-scroll-distance="10"
-  >
-    <a-list
-      :dataSource="data"
-    >
-      <a-list-item slot="renderItem" slot-scope="item, index" :key="index">
-        
-        <div>Content</div>
-      </a-list-item>
-      <div v-if="loading && !busy" class="demo-loading-container">
-        <a-spin />
-      </div>
-    </a-list>
+  <div>
+    <el-table :data="data" style="100%">
+      <el-table-column
+        prop="hash"
+        label="交易hash">
+        <template slot-scope="{row}">
+          <span class="cell-text-ellipsis">{{ row.hash }}</span>
+        </template>
+        </el-table-column>
+      <el-table-column
+        prop="timeStamp"
+        label="时间">
+        <template slot-scope="{row}">
+          <span>{{ row.timeStamp | formatTime }}</span>
+        </template>
+        </el-table-column>
+      <el-table-column
+        prop="from"
+        label="发送方">
+        <template slot-scope="{row}">
+          <span class="cell-text-ellipsis">{{ row.from}}</span>
+        </template>
+        </el-table-column>
+      <el-table-column
+        prop="to"
+        label="接收方">
+        <template slot-scope="{row}">
+          <span class="cell-text-ellipsis">{{ row.to}}</span>
+        </template>
+        </el-table-column>
+      <el-table-column
+        prop="value"
+        label="数量">
+        <template slot-scope="{row}">
+          <span>{{ row.value | tokenValue(row.tokenDecimal)}}</span>
+        </template>
+        </el-table-column>
+    </el-table>
+    <Pagination :page.sync="page" :limit.sync="limit" @pagination="handleInfiniteOnLoad" />
   </div>
 </template>
 <script>
 import reqwest from 'reqwest'
-import infiniteScroll from 'vue-infinite-scroll'
 import config from '@/config/etherem'
+import Pagination from '@/components/Pagination'
+
+//  table 头部
+const columns = [
+  {
+    title: '交易哈希',
+    dataIndex: 'txhash'
+  }
+]
 export default {
-  directives: { infiniteScroll },
+  filters: {
+    tokenValue(value,tokenDecimal){
+      return value / Math.pow(10, tokenDecimal)
+    }
+  },
+  components: {
+    Pagination
+  },
   data () {
     return {
       data: [],
       loading: false,
       busy: false,
       page: 1,
+      limit: config.offset
     }
   },
   beforeMount () {
@@ -46,7 +84,7 @@ export default {
     fetchData (callback) {
       reqwest({
         // url: 'https://explorer-web.api.btc.com/v1/eth/tokentxns/0xfdeaa4ab9fea519afd74df2257a21e5bca0dfd3f?page=1&size=10',
-        url:  `${config.tokentxuri}&apikey=${config.apikey}&contractaddress=${config.contractaddress}&sort=${config.sort}&page=${this.page}&offset=${config.offset}`,
+        url:  `${config.tokentxuri}&apikey=${config.apikey}&contractaddress=${config.contractaddress}&sort=${config.sort}&page=${this.page}&offset=${this.limit}`,
         // type: 'json',
         method: 'get',
         contentType: 'text/html',
@@ -58,7 +96,6 @@ export default {
       })
     },
     handleInfiniteOnLoad  () {
-      this.page += 1
       this.loading = true
       this.fetchData((res) => {
         this.loading = false
@@ -68,7 +105,7 @@ export default {
           }else{
             this.busy = false
           }
-          this.data = this.data.concat(res.result)
+          this.data = res.result
         }else{
           this.$message.error(res.message)
         }
@@ -91,5 +128,10 @@ export default {
   bottom: 40px;
   width: 100%;
   text-align: center;
+}
+.cell-text-ellipsis{
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 </style>
